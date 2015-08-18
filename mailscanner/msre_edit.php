@@ -49,7 +49,8 @@ Released under the GNU GPL: http://www.gnu.org/copyleft/gpl.html#TOC1
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 // Include of necessary functions
-require_once("./functions.php");
+require_once('./functions.php');
+use voku\helper\UTF8;
 
 // Authentication checking
 session_start();
@@ -173,11 +174,11 @@ function Show_Form($status_msg)
         if ($line == "") {
             $line = "#";
         }
-        if ((substr($line, 0, 1) != "#")
+        if ((UTF8::substr($line, 0, 1) != "#")
             or preg_match("/^#DISABLED#/", $line)
         ) {
             // check for a description on the previous line
-            if (substr($previous_line, 0, 1) == "#") {
+            if (UTF8::substr($previous_line, 0, 1) == "#") {
                 $desc = $previous_line;
             } else {
                 $desc = "";
@@ -195,7 +196,7 @@ function Show_Form($status_msg)
         $desc = $ruleanddesc[0];
         $rule = $ruleanddesc[1];
         // get rid of the # on the front of desc
-        $desc = substr($desc, 1);
+        $desc = UTF8::substr($desc, 1);
         // need to split the rule on tabs and spaces...
         $rule_part = preg_split("/[\t\s]/", $rule);
         // now I have to get rid of any blank elements, which would be
@@ -547,7 +548,7 @@ function Process_Form()
     $previous_line = "";
     $first_line = true;
     foreach (preg_split("/\n/", $file_contents) as $line) {
-        if ($line == "" or (substr($line, 0, 1) == "#"
+        if ($line == "" or (UTF8::substr($line, 0, 1) == "#"
                 and !preg_match("/#DISABLED#/", $line))
         ) {
             if (!$first_line) {

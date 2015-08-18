@@ -140,8 +140,8 @@ if (is_writable(CACHE_DIR)) {
     $graph_labels = $data_labels;
 
     // Reduce the number of labels on the graph to prevent them being sqashed.
-    if (count($graph_labels) > 20) {
-        $b = substr(count($graph_labels), 0, 1);
+    if (UTF8::count($graph_labels) > 20) {
+        $b = UTF8::substr(count($graph_labels), 0, 1);
         for ($a = 0; $a < count($graph_labels); $a++) {
             if ($a % $b) {
                 $graph_labels[$a] = "";

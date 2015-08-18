@@ -30,6 +30,7 @@
  */
 
 require_once('./functions.php');
+use voku\helper\UTF8;
 require_once('Mail/mimeDecode.php');
 ini_set("memory_limit", MEMORY_LIMIT);
 
@@ -99,7 +100,7 @@ if (!isset($_GET['id'])) {
         if (!@file_exists($quarantine_dir . '/' . $filename)) {
             die("Error: file not found\n");
         }
-        $file = file_get_contents($quarantine_dir . '/' . $filename);
+        $file = UTF8::file_get_contents($quarantine_dir . '/' . $filename);
     }
 }
 
@@ -127,7 +128,7 @@ echo " </thead>\n";
 function lazy($title, $val, $dohtmlentities = true)
 {
     if ($dohtmlentities) {
-        $v = htmlentities($val);
+        $v = UTF8::htmlentities($val);
     } else {
         $v = $val;
     }
@@ -162,15 +163,16 @@ $header_fields = array(
 
 foreach ($header_fields as $field) {
     if (isset($structure->headers[$field['name']])) {
+        $structure->headers[$field['name']] = getUTF8String($structure->headers[$field['name']]);
         /* this is a quick hack to fix issue #154, This need to be recoded in next version */
         if (is_array($structure->headers[$field['name']])) {
             $structure->headers[$field['name']] = implode("; ", $structure->headers[$field['name']]);
         }
-        $structure->headers[$field['name']] = getUTF8String($structure->headers[$field['name']]);
+
         if ($field['replaceQuote']) {
-            $structure->headers[$field['name']] = str_replace('"', '', $structure->headers[$field['name']]);
+            $structure->headers[$field['name']] = UTF8::str_replace('"', '', $structure->headers[$field['name']]);
         }
-        lazy(ucfirst($field['name']) . ':', $structure->headers[$field['name']]);
+        lazy(UTF8::ucfirst($field['name']) . ':', $structure->headers[$field['name']]);
     }
 }
 

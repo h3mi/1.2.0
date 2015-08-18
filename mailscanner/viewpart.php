@@ -30,6 +30,8 @@
  */
 
 require_once './functions.php';
+use voku\helper\UTF8;
+
 require_once 'Mail/mimeDecode.php';
 
 session_start();
@@ -91,7 +93,7 @@ if (!isset($_GET['id'])) {
         if (!@file_exists($quarantine_dir . '/' . $filename)) {
             die("Error: file not found\n");
         }
-        $file = file_get_contents($quarantine_dir . '/' . $filename);
+        $file = UTF8::file_get_contents($quarantine_dir . '/' . $filename);
     }
 }
 
@@ -116,39 +118,34 @@ function decode_structure($structure)
     $type = $structure->ctype_primary . "/" . $structure->ctype_secondary;
     switch ($type) {
         case "text/plain":
-            /*
-            if (isset ($structure->ctype_parameters['charset']) &&
-                strtolower($structure->ctype_parameters['charset']) == 'utf-8'
-            ) {
-                $structure->body = utf8_decode($structure->body);
-            }
-            */
             echo '<!DOCTYPE html>
  <html>
  <head>
  <meta charset="utf-8">
- <link rel="shortcut icon" href="images/favicon.png">
  <title>Quarantined E-Mail Viewer</title>
  </head>
  <body>
- <pre>' . htmlentities(wordwrap($structure->body)) . '</pre>
+ <pre>' . UTF8::htmlentities(UTF8::wordwrap(getUTF8String($structure->body))) . '</pre>
  </body>
  </html>' . "\n";
             break;
         case "text/html":
-            echo '<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">' . "\n";
-            if (isset($structure->ctype_parameters['charset']) && strtolower(
+            echo '<!DOCTYPE html>' . "\n";
+            echo '<head><meta charset="utf-8"><title>Quarantined E-Mail Viewer</title></head><body>' . "\n";
+            if (isset($structure->ctype_parameters['charset']) && UTF8::strtolower(
                     $structure->ctype_parameters['charset']
                 ) != 'utf-8'
             ) {
-                $structure->body = utf8_encode($structure->body);
+                $structure->body = getUTF8String($structure->body);
             }
+
             if (STRIP_HTML) {
-                $structure->body = str_replace('<!DOCTYPE', '<DOCTYPE', $structure->body);
-                echo strip_tags($structure->body, ALLOWED_TAGS);
+                $structure->body = UTF8::str_replace('<!DOCTYPE', '<DOCTYPE', $structure->body);
+                echo UTF8::strip_tags($structure->body, ALLOWED_TAGS);
             } else {
                 echo $structure->body;
             }
+            echo '</body></html>';
             break;
         case "multipart/alternative":
             break;

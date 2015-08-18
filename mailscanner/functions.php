@@ -75,6 +75,16 @@ require_once('lib/xmlrpc/xmlrpc_wrappers.inc');
 //HTLMPurifier
 require_once('lib/htmlpurifier/HTMLPurifier.standalone.php');
 
+//UTF8 portable
+require_once('lib/portable-utf8/src/voku/helper/UTF8.php');
+require_once('lib/portable-utf8/src/voku/helper/Bootup.php');
+require_once('lib/portable-utf8/src/voku/helper/shim/Intl.php');
+require_once('lib/portable-utf8/src/voku/helper/shim/Iconv.php');
+require_once('lib/portable-utf8/src/voku/helper/shim/Mbstring.php');
+require_once('lib/portable-utf8/src/voku/helper/shim/Xml.php');
+require_once('lib/portable-utf8/src/voku/helper/shim/Normalizer.php');
+require_once('lib/portable-utf8/src/Normalizer.php');
+use voku\helper\UTF8;
 include "postfix.inc";
 
 /*
@@ -243,8 +253,8 @@ function html_start($title, $refresh = 0, $cacheable = true, $report = false)
         $message_id = " ";
     }
     $message_id = safe_value($message_id);
-    $message_id = htmlentities($message_id);
-    $message_id = trim($message_id, " ");
+    $message_id = UTF8::htmlentities($message_id);
+    $message_id = UTF8::trim($message_id, " ");
     echo '</head>' . "\n";
     echo '<body onload="updateClock(); setInterval(\'updateClock()\', 1000 )">' . "\n";
     echo '<table border="0" cellpadding="5" width="100%">' . "\n";
@@ -329,9 +339,9 @@ function html_start($title, $refresh = 0, $cacheable = true, $report = false)
         } elseif (file_exists("/usr/bin/uptime") && !DISTRIBUTED_SETUP) {
             $loadavg = shell_exec('/usr/bin/uptime');
             $loadavg = explode(" ", $loadavg);
-            $la_1m = rtrim($loadavg[count($loadavg) - 3], ",");
-            $la_5m = rtrim($loadavg[count($loadavg) - 2], ",");
-            $la_15m = rtrim($loadavg[count($loadavg) - 1]);
+            $la_1m = UTF8::rtrim($loadavg[count($loadavg) - 3], ",");
+            $la_5m = UTF8::rtrim($loadavg[count($loadavg) - 2], ",");
+            $la_15m = UTF8::rtrim($loadavg[count($loadavg) - 1]);
             echo '    <tr><td>Load Average:</td><td align="right" colspan="2"><table width="100%" class="mail" cellpadding="0" cellspacing="0"><tr><td align="center">' . $la_1m . '</td><td align="center">' . $la_5m . '</td><td align="center">' . $la_15m . '</td></tr></table></td>' . "\n";
         }
 
@@ -843,13 +853,9 @@ function __($string)
  */
 function getUTF8String($string)
 {
-    if (function_exists('mb_check_encoding')) {
-        if (!mb_check_encoding($string, 'UTF-8')) {
-            $string = mb_convert_encoding($string, 'UTF-8');
-        }
-    } else {
-        $string = utf8_encode($string);
-    }
+    //$string = UTF8::fix_utf8($string);
+    $string = UTF8::toUTF8($string);
+    //$string = UTF8::fix_utf8($string);
 
     return $string;
 }
@@ -1085,7 +1091,7 @@ function get_disks()
     if (php_uname('s') == 'Windows NT') {
         // windows
         $disks = `fsutil fsinfo drives`;
-        $disks = str_word_count($disks, 1);
+        $disks = UTF8::str_word_count($disks, 1);
         //TODO: won't work on non english installation, we need to find an universal command
         if ($disks[0] != 'Drives') {
             return array();
@@ -1107,7 +1113,7 @@ function get_disks()
             $mounted_fs = file("/proc/mounts");
             foreach ($mounted_fs as $fs_row) {
                 $drive = preg_split("/[\s]+/", $fs_row);
-                if ((substr($drive[0], 0, 5) == '/dev/') && (stripos($drive[1], '/chroot/') === false)) {
+                if ((UTF8::substr($drive[0], 0, 5) == '/dev/') && (UTF8::stripos($drive[1], '/chroot/') === false)) {
                     $temp_drive['device'] = $drive[0];
                     $temp_drive['mountpoint'] = $drive[1];
                     $disks[] = $temp_drive;
@@ -1121,7 +1127,7 @@ function get_disks()
             $data = explode("\n", $data);
             foreach ($data as $disk) {
                 $drive = preg_split("/[\s]+/", $disk);
-                if ((substr($drive[0], 0, 5) == '/dev/') && (stripos($drive[2], '/chroot/') === false)) {
+                if ((UTF8::substr($drive[0], 0, 5) == '/dev/') && (UTF8::stripos($drive[2], '/chroot/') === false)) {
                     $temp_drive['device'] = $drive[0];
                     $temp_drive['mountpoint'] = $drive[2];
                     $disks[] = $temp_drive;
@@ -1245,8 +1251,8 @@ function format_report_volume(&$data_in, &$info_out)
  */
 function trim_output($input, $maxlen)
 {
-    if ($maxlen > 0 && strlen($input) >= $maxlen) {
-        $output = substr($input, 0, $maxlen) . "...";
+    if ($maxlen > 0 && UTF8::strlen($input) >= $maxlen) {
+        $output = UTF8::substr($input, 0, $maxlen) . "...";
 
         return $output;
     } else {
@@ -1262,7 +1268,7 @@ function get_default_ruleset_value($file)
 {
     $fh = fopen($file, 'r') or die("Cannot open ruleset file $file");
     while (!feof($fh)) {
-        $line = rtrim(fgets($fh, filesize($file)));
+        $line = UTF8::rtrim(fgets($fh, filesize($file)));
         if (preg_match('/^([^#]\S+:)\s+(\S+)\s+([^#]\S+)/', $line, $regs)) {
             if ($regs[2] == 'default') {
                 return $regs[3];
@@ -1299,7 +1305,7 @@ function get_conf_var($name)
     foreach ($array_output as $parameter_name => $parameter_value) {
         $parameter_name = preg_replace('/ */', '', $parameter_name);
 
-        if ((strtolower($parameter_name)) == (strtolower($name))) {
+        if ((UTF8::strtolower($parameter_name)) == (UTF8::strtolower($name))) {
             if (is_file($parameter_value)) {
                 return read_ruleset_default($parameter_value);
             } else {
@@ -1361,12 +1367,12 @@ function get_conf_truefalse($name)
     foreach ($array_output as $parameter_name => $parameter_value) {
         $parameter_name = preg_replace('/ */', '', $parameter_name);
 
-        if ((strtolower($parameter_name)) == (strtolower($name))) {
+        if ((UTF8::strtolower($parameter_name)) == (UTF8::strtolower($name))) {
             // Is it a ruleset?
             if (is_readable($parameter_value)) {
                 $parameter_value = get_default_ruleset_value($parameter_value);
             }
-            $parameter_value = strtolower($parameter_value);
+            $parameter_value = UTF8::strtolower($parameter_value);
             switch ($parameter_value) {
                 case "yes":
                 case "1":
@@ -1376,8 +1382,8 @@ function get_conf_truefalse($name)
                     return false;
                 default:
                     // if $parameter_value is a ruleset or a function call return true
-                    $parameter_value = trim($parameter_value);
-                    if (strlen($parameter_value) > 0) {
+                    $parameter_value = UTF8::trim($parameter_value);
+                    if (UTF8::strlen($parameter_value) > 0) {
                         return true;
                     }
 
@@ -1403,7 +1409,7 @@ function get_conf_include_folder()
     $fh = fopen($msconfig, 'r')
     or die("Cannot open MailScanner configuration file");
     while (!feof($fh)) {
-        $line = rtrim(fgets($fh, filesize($msconfig)));
+        $line = UTF8::rtrim(fgets($fh, filesize($msconfig)));
         //if (preg_match('/^([^#].+)\s([^#].+)/', $line, $regs)) {
         if (preg_match('/^(?P<name>[^#].+)\s(?P<value>[^#].+)/', $line, $regs)) {
             $regs['name'] = preg_replace('/ */', '', $regs['name']);
@@ -1419,7 +1425,7 @@ function get_conf_include_folder()
             if (preg_match("/(%.+%)/", $regs['value'], $match)) {
                 $regs['value'] = preg_replace("/%.+%/", $var[$match[1]], $regs['value']);
             }
-            if ((strtolower($regs[1])) == (strtolower($name))) {
+            if ((UTF8::strtolower($regs[1])) == (UTF8::strtolower($name))) {
                 fclose($fh) or die($php_errormsg);
                 if (is_file($regs['value'])) {
                     return read_ruleset_default($regs['value']);
@@ -1449,7 +1455,7 @@ function parse_conf_file($name)
     while (!feof($fh)) {
 
         // read each line to the $line varable
-        $line = rtrim(fgets($fh, 4096));
+        $line = UTF8::rtrim(fgets($fh, 4096));
 
         //echo "line: ".$line."\n"; // only use for troubleshooting lines
 
@@ -1470,8 +1476,8 @@ function parse_conf_file($name)
             }
 
             // Remove any html entities from the code
-            $key = htmlentities($regs['name']);
-            $string = htmlentities($regs['value']);
+            $key = UTF8::htmlentities($regs['name']);
+            $string = UTF8::htmlentities($regs['value']);
 
             // Stuff all of the data to an array
             $array_output[$key] = $string;
@@ -1501,11 +1507,11 @@ function get_primary_scanner()
  */
 function translateQuarantineDate($date, $format = 'dmy')
 {
-    $y = substr($date, 0, 4);
-    $m = substr($date, 4, 2);
-    $d = substr($date, 6, 2);
+    $y = UTF8::substr($date, 0, 4);
+    $m = UTF8::substr($date, 4, 2);
+    $d = UTF8::substr($date, 6, 2);
 
-    $format = strtolower($format);
+    $format = UTF8::strtolower($format);
 
     switch ($format) {
         case 'dmy':
@@ -1529,7 +1535,7 @@ function subtract_get_vars($preserve)
 {
     if (is_array($_GET)) {
         foreach ($_GET as $k => $v) {
-            if (strtolower($k) !== strtolower($preserve)) {
+            if (UTF8::strtolower($k) !== UTF8::strtolower($preserve)) {
                 $output[] = "$k=$v";
             }
         }
@@ -1585,7 +1591,7 @@ function db_colorised_table($sql, $table_heading = false, $pager = false, $order
     $orderdir = '';
     if (isset($_GET['orderby'])) {
         $orderby = sanitizeInput($_GET['orderby']);
-        switch (strtoupper($_GET['orderdir'])) {
+        switch (UTF8::strtoupper($_GET['orderdir'])) {
             case 'A':
                 $orderdir = 'ASC';
                 break;
@@ -1595,10 +1601,10 @@ function db_colorised_table($sql, $table_heading = false, $pager = false, $order
         }
     }
     if (!empty($orderby)) {
-        if (($p = stristr($sql, 'ORDER BY')) !== false) {
+        if (($p = UTF8::stristr($sql, 'ORDER BY')) !== false) {
             // We already have an existing ORDER BY clause
-            $p = "ORDER BY\n  " . $orderby . ' ' . $orderdir . ',' . substr($p, (strlen('ORDER BY') + 2));
-            $sql = substr($sql, 0, strpos($sql, 'ORDER BY')) . $p;
+            $p = "ORDER BY\n  " . $orderby . ' ' . $orderdir . ',' . UTF8::substr($p, (UTF8::strlen('ORDER BY') + 2));
+            $sql = UTF8::substr($sql, 0, UTF8::strpos($sql, 'ORDER BY')) . $p;
         } else {
             // No existing ORDER BY - disable feature
             $order = false;
@@ -1614,12 +1620,12 @@ function db_colorised_table($sql, $table_heading = false, $pager = false, $order
         }
 
         // Remove any ORDER BY clauses as this will slow the count considerably
-        if ($pos = strpos($sql, "ORDER BY")) {
-            $sqlcount = substr($sql, 0, $pos);
+        if ($pos = UTF8::strpos($sql, "ORDER BY")) {
+            $sqlcount = UTF8::substr($sql, 0, $pos);
         }
 
         // Count the number of rows that would be returned by the query
-        $sqlcount = "SELECT COUNT(*) " . strstr($sqlcount, "FROM");
+        $sqlcount = "SELECT COUNT(*) " . UTF8::strstr($sqlcount, "FROM");
         $rows = mysql_result(dbquery($sqlcount), 0);
 
         // Build the pager data
@@ -1962,10 +1968,10 @@ function db_colorised_table($sql, $table_heading = false, $pager = false, $order
                             $row[$f] = implode(",", $to_temp);
                         }
                         // Put each address on a new line
-                        $row[$f] = str_replace(",", "<br>", $row[$f]);
+                        $row[$f] = UTF8::str_replace(",", "<br>", $row[$f]);
                         break;
                     case 'subject':
-                        $row[$f] = htmlspecialchars(getUTF8String(decode_header($row[$f])));
+                        $row[$f] = UTF8::htmlspecialchars(getUTF8String(decode_header($row[$f])));
                         if (SUBJECT_MAXLEN > 0) {
                             $row[$f] = trim_output($row[$f], SUBJECT_MAXLEN);
                         }
@@ -2058,7 +2064,7 @@ function db_colorised_table($sql, $table_heading = false, $pager = false, $order
             }
             // Now add the id to the operations form elements
             if ($operations !== false) {
-                $row[0] = str_replace("REPLACEME", $id, $row[0]);
+                $row[0] = UTF8::str_replace("REPLACEME", $id, $row[0]);
                 $jsRadioCheck .= "  document.operations.elements[\"OPT-$id\"][val].checked = true;\n";
                 $jsReleaseCheck .= "  document.operations.elements[\"OPTRELEASE-$id\"].checked = true;\n";
             }
@@ -2164,12 +2170,12 @@ function db_colorised_table($sql, $table_heading = false, $pager = false, $order
             }
 
             // Remove any ORDER BY clauses as this will slow the count considerably
-            if ($pos = strpos($sql, "ORDER BY")) {
-                $sqlcount = substr($sql, 0, $pos);
+            if ($pos = UTF8::strpos($sql, "ORDER BY")) {
+                $sqlcount = UTF8::substr($sql, 0, $pos);
             }
 
             // Count the number of rows that would be returned by the query
-            $sqlcount = "SELECT COUNT(*) " . strstr($sqlcount, "FROM");
+            $sqlcount = "SELECT COUNT(*) " . UTF8::strstr($sqlcount, "FROM");
             $rows = mysql_result(dbquery($sqlcount), 0);
 
             // Build the pager data
@@ -2235,12 +2241,12 @@ function dbtable($sql, $title = false, $pager = false, $operations = false)
         }
 
         // Remove any ORDER BY clauses as this will slow the count considerably
-        if ($pos = strpos($sql, "ORDER BY")) {
-            $sqlcount = substr($sql, 0, $pos);
+        if ($pos = UTF8::strpos($sql, "ORDER BY")) {
+            $sqlcount = UTF8::substr($sql, 0, $pos);
         }
 
         // Count the number of rows that would be returned by the query
-        $sqlcount = "SELECT COUNT(*) " . strstr($sqlcount, "FROM");
+        $sqlcount = "SELECT COUNT(*) " . UTF8::strstr($sqlcount, "FROM");
         $rows = mysql_result(dbquery($sqlcount), 0);
 
         // Build the pager data
@@ -2325,12 +2331,12 @@ function dbtable($sql, $title = false, $pager = false, $operations = false)
         }
 
         // Remove any ORDER BY clauses as this will slow the count considerably
-        if ($pos = strpos($sql, "ORDER BY")) {
-            $sqlcount = substr($sql, 0, $pos);
+        if ($pos = UTF8::strpos($sql, "ORDER BY")) {
+            $sqlcount = UTF8::substr($sql, 0, $pos);
         }
 
         // Count the number of rows that would be returned by the query
-        $sqlcount = "SELECT COUNT(*) " . strstr($sqlcount, "FROM");
+        $sqlcount = "SELECT COUNT(*) " . UTF8::strstr($sqlcount, "FROM");
         $rows = mysql_result(dbquery($sqlcount), 0);
 
         // Build the pager data
@@ -2426,7 +2432,7 @@ function return_24_hour_array()
 {
     $hour_array = array();
     for ($h = 0; $h < 24; $h++) {
-        $h = str_pad($h, 2, '0', STR_PAD_LEFT);
+        $h = UTF8::str_pad($h, 2, '0', STR_PAD_LEFT);
         $hour_array[$h] = 0;
     }
 
@@ -2440,7 +2446,7 @@ function return_60_minute_array()
 {
     $minute_array = array();
     for ($m = 0; $m < 60; $m++) {
-        $m = str_pad($m, 2, '0', STR_PAD_LEFT);
+        $m = UTF8::str_pad($m, 2, '0', STR_PAD_LEFT);
         $minute_array[$m] = 0;
     }
 
@@ -2455,7 +2461,7 @@ function return_time_array()
     $time_array = array();
     $minute_array = return_60_minute_array();
     for ($h = 0; $h < 24; $h++) {
-        $h = str_pad($h, 2, '0', STR_PAD_LEFT);
+        $h = UTF8::str_pad($h, 2, '0', STR_PAD_LEFT);
         $time_array[$h] = $minute_array;
     }
 
@@ -2531,7 +2537,7 @@ function address_filter_sql($addresses, $type)
             break;
         case 'D': // Domain administrator
             foreach ($addresses as $address) {
-                if (strpos($address, '@')) {
+                if (UTF8::strpos($address, '@')) {
                     if ((defined('FILTER_TO_ONLY') && FILTER_TO_ONLY)) {
                         $sqladdr_arr[] = "to_address like '%$address%'";
                     } else {
@@ -2566,7 +2572,7 @@ function address_filter_sql($addresses, $type)
  */
 function ldap_authenticate($user, $password)
 {
-    $user = strtolower($user);
+    $user = UTF8::strtolower($user);
     if ($user != "" && $password != "") {
         $ds = ldap_connect(LDAP_HOST, LDAP_PORT) or die("Could not connect to " . LDAP_HOST);
         // Check if Microsoft Active Directory compatibility is enabled
@@ -2575,7 +2581,7 @@ function ldap_authenticate($user, $password)
             ldap_set_option($ds, LDAP_OPT_PROTOCOL_VERSION, 3);
         }
         ldap_bind($ds, LDAP_USER, LDAP_PASS);
-        if (strpos($user, '@')) {
+        if (UTF8::strpos($user, '@')) {
             $r = ldap_search($ds, LDAP_DN, LDAP_EMAIL_FIELD . "=SMTP:$user") or die("Could not search");
         } else {
             $r = ldap_search($ds, LDAP_DN, "sAMAccountName=$user") or die("Could not search");
@@ -2587,8 +2593,8 @@ function ldap_authenticate($user, $password)
                 if (ldap_bind($ds, $user, "$password")) {
                     if (isset($result[0][LDAP_EMAIL_FIELD])) {
                         foreach ($result[0][LDAP_EMAIL_FIELD] as $email) {
-                            if (substr($email, 0, 4) == "SMTP") {
-                                $email = strtolower(substr($email, 5));
+                            if (UTF8::substr($email, 0, 4) == "SMTP") {
+                                $email = UTF8::strtolower(UTF8::substr($email, 5));
                                 break;
                             }
                         }
@@ -2702,17 +2708,17 @@ function ldap_get_conf_truefalse($entry)
  */
 function translate_etoi($name)
 {
-    $name = strtolower($name);
+    $name = UTF8::strtolower($name);
     $file = MS_LIB_DIR . 'MailScanner/ConfigDefs.pl';
     $fh = fopen($file, 'r')
     or die("Cannot open MailScanner ConfigDefs file: $file\n");
     while (!feof($fh)) {
-        $line = rtrim(fgets($fh, filesize($file)));
+        $line = UTF8::rtrim(fgets($fh, filesize($file)));
         if (preg_match('/^([^#].+)\s=\s([^#].+)/i', $line, $regs)) {
             // Lowercase all values
-            $regs[1] = strtolower($regs[1]);
-            $regs[2] = strtolower($regs[2]);
-            $etoi[rtrim($regs[2])] = rtrim($regs[1]);
+            $regs[1] = UTF8::strtolower($regs[1]);
+            $regs[2] = UTF8::strtolower($regs[2]);
+            $etoi[UTF8::rtrim($regs[2])] = UTF8::rtrim($regs[1]);
         }
     }
     fclose($fh) or die($php_errormsg);
@@ -2737,19 +2743,19 @@ function decode_header($input)
         //$charset = $matches[2];
         $encoding = $matches[3];
         $text = $matches[4];
-        switch (strtolower($encoding)) {
+        switch (UTF8::strtolower($encoding)) {
             case 'b':
                 $text = base64_decode($text);
                 break;
             case 'q':
-                $text = str_replace('_', ' ', $text);
+                $text = UTF8::str_replace('_', ' ', $text);
                 preg_match_all('/=([a-f0-9]{2})/i', $text, $matches);
                 foreach ($matches[1] as $value) {
-                    $text = str_replace('=' . $value, chr(hexdec($value)), $text);
+                    $text = UTF8::str_replace('=' . $value, UTF8::chr(hexdec($value)), $text);
                 }
                 break;
         }
-        $input = str_replace($encoded, $text, $input);
+        $input = UTF8::str_replace($encoded, $text, $input);
     }
 
     return $input;
@@ -2779,7 +2785,7 @@ function return_geoip_country($ip)
     //check if ipv4 has a port specified (e.g. 10.0.0.10:1025), strip it if found
     $ip = stripPortFromIp($ip);
     $countryname = false;
-    if (strpos($ip, ':') === false) {
+    if (UTF8::strpos($ip, ':') === false) {
         //ipv4
         if (file_exists('./temp/GeoIP.dat') && filesize('./temp/GeoIP.dat') > 0) {
             $gi = geoip_open('./temp/GeoIP.dat', GEOIP_STANDARD);
@@ -2860,9 +2866,9 @@ function quarantine_list($input = "/")
  */
 function is_local($host)
 {
-    $host = strtolower($host);
+    $host = UTF8::strtolower($host);
     // Is RPC required to look-up??
-    $sys_hostname = strtolower(rtrim(gethostname()));
+    $sys_hostname = UTF8::strtolower(UTF8::rtrim(gethostname()));
     switch ($host) {
         case $sys_hostname:
         case gethostbyaddr('127.0.0.1'):
@@ -2966,7 +2972,7 @@ SELECT
                     $quarantined[$count]['to'] = $row->to_address;
                     $quarantined[$count]['file'] = $f;
                     $file = escapeshellarg($quarantine . '/' . $f);
-                    $quarantined[$count]['type'] = ltrim(rtrim(`/usr/bin/file -bi $file`));
+                    $quarantined[$count]['type'] = UTF8::trim(`/usr/bin/file -bi $file`);
                     $quarantined[$count]['path'] = $quarantine . '/' . $f;
                     $quarantined[$count]['md5'] = md5($quarantine . '/' . $f);
                     $quarantined[$count]['dangerous'] = $infected;
@@ -3046,7 +3052,7 @@ function quarantine_release($list, $num, $to, $rpc_only = false)
                 global $error;
                 $error = true;
             } else {
-                $status = "Release: message released to " . str_replace(",", ", ", $to);
+                $status = "Release: message released to " . UTF8::str_replace(",", ", ", $to);
                 audit_log('Quarantined message (' . $list[$val]['msgid'] . ') released to ' . $to);
             }
 
@@ -3060,7 +3066,7 @@ function quarantine_release($list, $num, $to, $rpc_only = false)
                     debug($cmd . $list[$val]['path']);
                     exec($cmd . $list[$val]['path'] . " 2>&1", $output_array, $retval);
                     if ($retval == 0) {
-                        $status = "Release: message released to " . str_replace(",", ", ", $to);
+                        $status = "Release: message released to " . UTF8::str_replace(",", ", ", $to);
                         audit_log('Quarantined message (' . $list[$val]['msgid'] . ') released to ' . $to);
                     } else {
                         $status = "Release: error code " . $retval . " returned from Sendmail:\n" . join(
@@ -3340,7 +3346,7 @@ function fixMessageId($id)
 {
     $mta = get_conf_var('mta');
     if ($mta == 'postfix') {
-        $id = str_replace('_', '.', $id);
+        $id = UTF8::str_replace('_', '.', $id);
     }
 
     return $id;
@@ -3389,9 +3395,9 @@ function read_ruleset_default($file)
     $fh = fopen($file, 'r')
     or die("Cannot open MailScanner ruleset file ($file)");
     while (!feof($fh)) {
-        $line = rtrim(fgets($fh, filesize($file)));
+        $line = UTF8::rtrim(fgets($fh, filesize($file)));
         if (preg_match('/(\S+)\s+(\S+)\s+(\S+)/', $line, $regs)) {
-            if (strtolower($regs[2]) == 'default') {
+            if (UTF8::strtolower($regs[2]) == 'default') {
                 // Check that it isn't another ruleset
                 if (is_file($regs[3])) {
                     return read_ruleset_default($regs[3]);
@@ -3411,7 +3417,7 @@ function get_virus_conf($scanner)
 {
     $fh = fopen(MS_CONFIG_DIR . 'virus.scanners.conf', 'r');
     while (!feof($fh)) {
-        $line = rtrim(fgets($fh, 1048576));
+        $line = UTF8::rtrim(fgets($fh, 1048576));
         if (preg_match("/(^[^#]\S+)\s+(\S+)\s+(\S+)/", $line, $regs)) {
             if ($regs[1] == $scanner) {
                 fclose($fh);
@@ -3506,7 +3512,7 @@ function is_rpc_client_allowed()
             }
             if ($client == 'local24') {
                 // Get machine IP address from the hostname
-                $ip = gethostbyname(rtrim(gethostname()));
+                $ip = gethostbyname(UTF8::rtrim(gethostname()));
                 // Change IP address to a /24 network
                 $ipsplit = explode('.', $ip);
                 $ipsplit[3] = '0';

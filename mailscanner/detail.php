@@ -31,6 +31,7 @@
 
 // Require the functions page
 require_once("./functions.php");
+use voku\helper\UTF8;
 
 // Start the session
 session_start();
@@ -444,10 +445,10 @@ if ((is_array($quarantined)) && (count($quarantined) > 0)) {
                 preg_match('!message/rfc822!', $item['type'])
             ) {
                 echo '  <td><a href="viewmail.php?id=' . $item['msgid'] . '">' .
-                    substr($item['path'], strlen($quarantinedir) + 1) .
+                    UTF8::substr($item['path'], UTF8::strlen($quarantinedir) + 1) .
                     '</a></td>' . "\n";
             } else {
-                echo "  <td>" . substr($item['path'], strlen($quarantinedir) + 1) . "</td>\n";
+                echo "  <td>" . UTF8::substr($item['path'], UTF8::strlen($quarantinedir) + 1) . "</td>\n";
             }
             if ($item['dangerous'] == "Y" && $_SESSION['user_type'] != 'A') {
                 $dangerous = $yes;

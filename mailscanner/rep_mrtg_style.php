@@ -31,6 +31,8 @@
 
 // Include of necessary functions
 require_once("./functions.php");
+use voku\helper\UTF8;
+
 require_once("./filter.inc");
 
 // Authentication checking
@@ -87,11 +89,11 @@ if (is_writable(CACHE_DIR)) {
 
     $last = "";
     while ($row = mysql_fetch_object($result)) {
-        if ($last == substr($row->xaxis, 0, 2)) {
+        if ($last == UTF8::substr($row->xaxis, 0, 2)) {
             $data_labels_hour[] = "";
         } else {
-            $data_labels_hour[] = substr($row->xaxis, 0, 2);
-            $last = substr($row->xaxis, 0, 2);
+            $data_labels_hour[] = UTF8::substr($row->xaxis, 0, 2);
+            $last = UTF8::substr($row->xaxis, 0, 2);
         }
         //$data_labels[] = $row->xaxis;
         $data_total_mail[] = $row->total_mail;

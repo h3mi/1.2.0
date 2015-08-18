@@ -90,7 +90,7 @@ if (isset($_GET['relay'])) {
         $relay_regex = "[[:<:]]" . str_replace('.', '\.', $_GET['relay']) . "[[:>:]]";
     }
 }
-if (strlen($relay_regex) > 0) {
+if (UTF8::strlen($relay_regex) > 0) {
     $sql .= " AND headers REGEXP '$relay_regex'";
     if (isset($_GET['isspam'])) {
         $sql .= " AND isspam > 0";
